@@ -1,0 +1,183 @@
+Metadata-Version: 2.4
+Name: chainshield
+Version: 0.1.0
+Summary: ChainShield — Layered Network Protection for Linux and Termux
+Author: L1ghtXr
+License: MIT
+Keywords: proxy,socks,privacy,termux,network
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Internet :: Proxy Servers
+Classifier: Topic :: Security
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: tomli>=2.0.0; python_version < "3.11"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Dynamic: license-file
+
+# ChainShield
+
+**Layered Network Protection** for Linux and Android Termux.
+
+Author: **L1ghtXr** · Contribution: **DevBrezz**
+
+Repository: https://github.com/L1ghtXr/ChainShield
+
+## What it does
+
+ChainShield is a Python 3 terminal application that:
+
+- Manages SOCKS4/5 and HTTP CONNECT proxy hops (including sequential multi-hop chains)
+- Runs selected commands under a configured protection policy (fail-closed when required)
+- Verifies public egress IP through real HTTPS IP-echo endpoints
+- Emits structured traffic/diagnostic events with explicit provenance
+- Reports protection state honestly (application-level vs device-wide)
+
+It is **not** a silent system-wide VPN. A connected proxy does **not** produce a global `PROTECTED` state by itself.
+
+## Compatibility matrix
+
+| Feature                         | Linux (user) | Linux (root) | Termux      |
+|---------------------------------|--------------|--------------|-------------|
+| SOCKS5 / SOCKS4 / HTTP CONNECT  | Yes          | Yes          | Yes         |
+| Multi-hop TCP chain             | Yes          | Yes          | Yes         |
+| App proxy env (`run`)           | Yes          | Yes          | Yes         |
+| Public IP verify (HTTPS)        | Yes          | Yes          | Yes         |
+| DNS diagnostic (resolv.conf)    | Yes          | Yes          | Partial     |
+| LD_PRELOAD interception         | Unverified*  | Unverified*  | No          |
+| Device-wide VPN                 | External     | External     | Companion app required |
+| Firewall management             | Disabled     | Optional**   | No          |
+
+\* No bundled `libproxychains`; capability reported as integration boundary.  
+\*\* Not performed automatically; requires explicit authorization design.
+
+## Requirements
+
+- Python **3.10+** (3.11+ recommended). On Python 3.10, `tomli` is required and installed automatically via packaging metadata.
+
+## Install
+
+### Linux
+
+```bash
+git clone https://github.com/L1ghtXr/ChainShield.git
+cd ChainShield
+chmod +x install.sh
+./install.sh
+# ensure ~/.local/bin is on PATH
+chainshield --version
+```
+
+### Termux
+
+```bash
+pkg install python git
+git clone https://github.com/L1ghtXr/ChainShield.git
+cd ChainShield
+./install.sh
+chainshield --version
+```
+
+Uninstall: `./uninstall.sh`
+
+## Configuration
+
+Example file: `config.example.toml`  
+Default path: `~/.config/chainshield/config.toml`
+
+```toml
+[[proxy.chain]]
+type = "socks5"
+host = "127.0.0.1"
+port = 9050
+```
+
+Policies:
+
+- `strict` / `fail_closed` — hop failure rejects the route; no direct fallback
+- `manual` — use only the configured route
+
+## Commands
+
+```text
+chainshield                 Interactive menu
+chainshield --version
+chainshield status
+chainshield start
+chainshield stop
+chainshield proxy list
+chainshield proxy test
+chainshield run -- curl https://example.com
+chainshield monitor
+chainshield verify-ip
+chainshield diagnostics
+chainshield config
+```
+
+### `run` behavior
+
+1. Inspect command and required transport
+2. Select route from proxies / tunnel capability
+3. Health-check hops when configured
+4. Export proxy environment for the child process
+5. Refuse execution when protection is required and route is invalid
+6. Report actual coverage after exit
+
+**Important:** Only applications that honor `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` / `SOCKS_PROXY` are reliably covered. Arbitrary processes are not intercepted on Termux.
+
+## Protection states
+
+| State                 | Meaning |
+|-----------------------|---------|
+| INACTIVE              | No working proxy/tunnel path |
+| INITIALIZING          | Start in progress |
+| PARTIALLY PROTECTED   | Application/process route active (and optionally verified) |
+| NOT VERIFIED          | Path present but egress verification not confirmed |
+| PROTECTED             | Device-level coverage **and** verified egress (requires real tunnel) |
+| ERROR                 | Required component failed |
+
+## Architecture (modules)
+
+- `platform` — Linux / Termux detection
+- `capabilities` — validated feature registry
+- `proxy` — SOCKS/HTTP handshakes and chaining
+- `routing` — engine selection and `run`
+- `verification` — real IP-echo checks
+- `tunnel` — external VPN integration boundary
+- `events` / `monitor` — provenance-tagged events
+- `diagnostics` — DNS and capability reports
+- `ui` / `cli` — purple terminal interface
+
+## Tests
+
+```bash
+cd ChainShield
+python3 -m pytest -q
+```
+
+Local mock proxy servers are used for handshake tests. Live IP verification is not required for the unit suite.
+
+## Limitations (explicit)
+
+- No fabricated packet logs or IP addresses
+- UDP and raw sockets are not covered by the TCP proxy chain
+- Multi-hop via environment variables only exports the first hop; full chain is used for ChainShield-native CONNECT (e.g. `verify-ip`)
+- Android device-wide routing needs a separate `VpnService` application
+- Reference project [proxychains](https://github.com/haad/proxychains) is GPL-2.0; ChainShield is original MIT-licensed code and does not copy its sources
+
+## License
+
+MIT — see `LICENSE`.
+
+## Security
+
+See `SECURITY.md`.

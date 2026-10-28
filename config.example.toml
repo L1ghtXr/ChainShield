@@ -1,0 +1,49 @@
+# ChainShield example configuration
+# Copy to ~/.config/chainshield/config.toml (Linux / Termux)
+
+[general]
+require_verification = true
+coverage_claim = "application"
+chain_policy = "strict"
+
+[proxy]
+chain_policy = "strict"
+connect_timeout = 10.0
+handshake_timeout = 15.0
+health_check_timeout = 8.0
+
+# [[proxy.chain]]
+# type = "socks5"
+# host = "127.0.0.1"
+# port = 9050
+# username = ""
+# password = ""
+
+# [[proxy.chain]]
+# type = "http"
+# host = "proxy.example.com"
+# port = 8080
+# username = "user"
+# password = "secret"
+
+[verification]
+ip_echo_endpoints = [
+  "https://api.ipify.org",
+  "https://ifconfig.me/ip",
+  "https://icanhazip.com",
+]
+remote_test_endpoint = ""
+dns_test_enabled = true
+
+[monitor]
+event_buffer_size = 500
+log_file = ""
+redact_secrets = true
+
+[tunnel]
+type = "none"
+config_path = ""
+
+[ui]
+color = true
+narrow_width = 60

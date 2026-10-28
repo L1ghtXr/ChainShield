@@ -1,0 +1,6 @@
+# Runtime: standard library on Python 3.11+.
+# On Python 3.10 only:
+tomli>=2.0.0; python_version < "3.11"
+
+# Development:
+# pytest>=7.0
